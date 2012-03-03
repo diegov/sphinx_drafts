@@ -8,7 +8,7 @@ setup(
     py_modules=['sphinx_drafts'],
     license='COPYING',
     description='Add draft warnings to sphinx documents and their referring documents.',
-    long_description=open('README.txt').read(),
+    long_description=open('README.rst').read(),
     install_requires=[
         "Sphinx >= 1.1.2"
     ],
