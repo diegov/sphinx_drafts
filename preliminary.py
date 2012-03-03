@@ -1,3 +1,24 @@
+# sphinx-preliminary: a sphinx extension to mark pages as preliminary 
+# and automatically mark referring pages as preliminary 
+#
+# Copyright (C) 2012 Diego Veralli <diegoveralli@yahoo.co.uk>
+#
+#  This file is part of sphinx-preliminary.
+#  
+#  sphinx-preliminary is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  sphinx-preliminary is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with sphinx-preliminary. If not, see <http://www.gnu.org/licenses/>.
+#
+
 from docutils import nodes
 import sphinx
 import inspect
