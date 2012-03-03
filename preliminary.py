@@ -90,9 +90,7 @@ def update_preliminary_status(app, doctree, docname, seen_docs):
     if curr == None: return 'no'
     if curr != 'check': return curr
 
-    seen_docs.append(doctree)
-
-    import pdb; pdb.set_trace()
+    seen_docs.append(docname)
 
     refs = pre_info.get('preliminary_references')
     if refs == None:
@@ -107,15 +105,14 @@ def update_preliminary_status(app, doctree, docname, seen_docs):
     if not refs: return curr
     for dep_name in refs:
         depname, dep = find_doc(app, docname, dep_name)
-        dep_info = get_preliminary_info(app, dep_name, dep)
+        dep_info = get_preliminary_info(app, depname, dep)
         dep_status = dep_info.get('preliminary_status')
         if dep_status != None and dep_status == 'yes':
             return 'yes'
 
-        if dep in seen_docs: continue
+        if depname in seen_docs: continue
 
         if dep_status == 'check':
-            import pdb; pdb.set_trace()
             dep_info['preliminary_status'] = \
                 update_preliminary_status(app, dep, depname, seen_docs)
 
@@ -137,7 +134,7 @@ def process_preliminary_nodes_resolved(app, doctree, docname):
     for node in doctree.traverse(preliminary_marker):
         if pre_info['preliminary_status'] == 'check' and node.check:
             pre_info['preliminary_status'] = \
-                update_preliminary_status(app, doctree, docname, [node])
+                update_preliminary_status(app, doctree, docname, [docname])
 
         replacements = []
         if pre_info['preliminary_status'] == 'yes':
