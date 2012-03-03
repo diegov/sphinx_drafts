@@ -1,23 +1,26 @@
-# sphinx-draft: a sphinx extension to mark pages as draft 
+# sphinx_drafts: a sphinx extension to mark pages as draft 
 # and automatically mark referring pages as drafts
 #
 # Copyright (C) 2012 Diego Veralli <diegoveralli@yahoo.co.uk>
 #
-#  This file is part of sphinx-draft.
+#  This file is part of sphinx_drafts.
 #  
-#  sphinx-draft is free software: you can redistribute it and/or modify
+#  sphinx_drafts is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
 #
-#  sphinx-draft is distributed in the hope that it will be useful,
+#  sphinx_drafts is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with sphinx-draft. If not, see <http://www.gnu.org/licenses/>.
+#  along with sphinx_drafts. If not, see <http://www.gnu.org/licenses/>.
 #
+"""a sphinx extension to mark pages as draft and automatically mark 
+referring pages as drafts
+"""
 
 import sphinx
 from docutils import nodes
@@ -36,6 +39,8 @@ class draft_marker(nodes.General, nodes.Element):
         self.check = check
 
 class DraftNote(Directive):
+    """Usage: .. draft:: 'yes' or .. draft:: 'check'
+    """
     has_content = False
     required_arguments = 1
 
