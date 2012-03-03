@@ -34,129 +34,123 @@ class PreliminaryNote(Directive):
                 self.arguments[0]
             raise Exception, msg
 
-        curr = self.state.document.get('preliminary_status')
-        #If it's already "yes", we don't want to change it to "check"
-        if curr == None or curr == 'check': 
-            self.state.document['preliminary_status'] = self.arguments[0]
         return [preliminary_marker(check)]
 
-#Debug methods
-
-def print_node_attributes(node):
-    print str(type(node)) + ' attribs: ' + str(dir(node))
-    for attr_name in dir(node):
-        if attr_name.startswith('_'): continue
-
-        attr = getattr(node, attr_name)
-        as_string = str(attr)
-
-        print '       ' + attr_name + ': ' + as_string
-
-def process(app, doctree, node_type):
-    for node in doctree.traverse(node_type):
-        print_node_attributes(node)
-
-def print_node_tree(node, depth=0):
-    msg = ' ' * depth * 4
-    print msg + str(type(node))
-    for child in node.children:
-        print_node_tree(child, depth + 1)
-
-#End of debug methods
-
-def get_preliminary_references(app):
+def get_preliminary_info(app, docname, doctree):
     env = app.builder.env
-    if not hasattr(env, 'preliminary_references'):
-        env.preliminary_references = []
+    if not hasattr(env, 'preliminary_doc_status'):
+        env.preliminary_doc_status = {}
 
-    return env.preliminary_references
+    if docname == None or not docname in env.preliminary_doc_status:
+        retval = doctree.attributes.get('preliminary_info')
+        if retval == None:
+            retval = {}
+            doctree.attributes['preliminary_info'] = retval
+
+        if docname != None:
+            env.preliminary_doc_status[docname] = retval
+    else: retval = env.preliminary_doc_status[docname]
+        
+    return retval
 
 def process_preliminaries(app, doctree):
-    references = get_preliminary_references(app)
+    pre_info = get_preliminary_info(app, None, doctree)
+
+    for node in doctree.traverse(preliminary_marker):
+        curr = pre_info.get('preliminary_status')
+        if curr == None or curr == 'check': 
+            pre_info['preliminary_status'] = 'check' if node.check else 'yes'
+
     for node in doctree.traverse(sphinx.addnodes.pending_xref):
-        print 'Attributes: ', str(node.attributes.keys())
         if 'reftarget' in node.attributes:
             reftarget = node.attributes['reftarget']
-            print 'Ref target is %s, with type %s' % (reftarget, str(type(reftarget)))
             marker = refdoc_marker(reftarget)
-            print 'Target of refdoc_marker just created', marker.target_doc
             doctree.append(marker)
 
 def process_ref_nodes(app, doctree):
-    # print '*************'
-    # print 'doctree-read'
-    # print '*************'
-    #print_node_tree(doctree)
-    #process(app, doctree, sphinx.addnodes.pending_xref)
     process_preliminaries(app, doctree)
 
-def find_doc(app, doctree, doc_name):
+def locate_relative_doc(refdoc_name, doc_name):
+    if doc_name.startswith('/'): return doc_name
+    elif '/' in refdoc_name:
+        split_point = refdoc_name.rindex('/')
+        return refdoc_name[:split_point + 1] + doc_name
+
+    return doc_name
+
+def find_doc(app, refdoc_name, doc_name):
     env = app.builder.env
-    return env.get_doctree(doc_name)
+    name = locate_relative_doc(refdoc_name, doc_name)
+    return (name, env.get_doctree(name))
     
-def update_preliminary_status(app, doctree, seen_docs):
-    curr = doctree.get('preliminary_status') 
-    print ' * Initial status: %s' % (curr)
-    print ' * Full doctree: %s' % (str(doctree))
+def update_preliminary_status(app, doctree, docname, seen_docs):
+    pre_info = get_preliminary_info(app, docname, doctree)
+    curr = pre_info.get('preliminary_status') 
 
     if curr == None: return 'no'
     if curr != 'check': return curr
 
     seen_docs.append(doctree)
 
-    refs = doctree.get('preliminary_references')
+    import pdb; pdb.set_trace()
+
+    refs = pre_info.get('preliminary_references')
+    if refs == None:
+        refs = []
+        pre_info['preliminary_references'] = refs
+
+    for node in doctree.traverse(refdoc_marker):
+        if node.target_doc not in refs:
+            refs.append(node.target_doc)
+
+    refs = pre_info.get('preliminary_references')
     if not refs: return curr
     for dep_name in refs:
-        print '    Processing ref %s' % (dep_name)
-        dep = find_doc(app, doctree, dep_name)
-        dep_status = dep.get('preliminary_status')
+        depname, dep = find_doc(app, docname, dep_name)
+        dep_info = get_preliminary_info(app, dep_name, dep)
+        dep_status = dep_info.get('preliminary_status')
         if dep_status != None and dep_status == 'yes':
             return 'yes'
 
         if dep in seen_docs: continue
 
         if dep_status == 'check':
-            dep['preliminary_status'] = update_preliminary_status(app, dep, seen_docs)
-
-        print '          Finished processing ref %s, its status is %s' % (dep_name, dep['preliminary_status'])
+            import pdb; pdb.set_trace()
+            dep_info['preliminary_status'] = \
+                update_preliminary_status(app, dep, depname, seen_docs)
 
         if dep_status == 'yes': return 'yes'
 
     return curr
 
-def process_ref_nodes_resolved(app, doctree, docname):
-    # print '****************'
-    # print 'doctree-resolved'
-    # print '****************'
-    #process(app, doctree, nodes.reference)
+def create_preliminary_warning():
+    t = nodes.Text(preliminary_docs_text)
+    p = nodes.paragraph()
+    p.append(t)
+    warning = nodes.warning()
+    warning.append(p)
+    return warning
 
-    #print_node_attributes(doctree)
-    
-    print 'Doctree\'s preliminary status:', doctree.get('preliminary_status')
-
-    doctree['preliminary_references'] = []
-    for node in doctree.traverse(refdoc_marker):
-        print 'Found reference:', node.target_doc
-        doctree['preliminary_references'].append(node.target_doc)
-        node.replace_self([])
+def process_preliminary_nodes_resolved(app, doctree, docname):
+    pre_info = get_preliminary_info(app, docname, doctree)
 
     for node in doctree.traverse(preliminary_marker):
-        if doctree['preliminary_status'] == 'check' and node.check:
-            doctree['preliminary_status'] = \
-                update_preliminary_status(app, doctree, [node])
+        if pre_info['preliminary_status'] == 'check' and node.check:
+            pre_info['preliminary_status'] = \
+                update_preliminary_status(app, doctree, docname, [node])
 
         replacements = []
-        if doctree['preliminary_status'] == 'yes':
-            t = nodes.Text(preliminary_docs_text)
-            p = nodes.paragraph()
-            p.append(t)
-            warning = nodes.warning()
-            warning.append(p)
+        if pre_info['preliminary_status'] == 'yes':
+            warning = create_preliminary_warning()
             replacements.append(warning)
 
         node.replace_self(replacements)
-        
+
+    for node in doctree.traverse(refdoc_marker):
+        node.replace_self([])
+
 def setup(app):
     app.add_directive('preliminary', PreliminaryNote)
     app.connect('doctree-read', process_ref_nodes)
-    app.connect('doctree-resolved', process_ref_nodes_resolved)
+    app.connect('doctree-resolved', process_preliminary_nodes_resolved)
+
