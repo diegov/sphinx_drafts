@@ -1,22 +1,22 @@
-# sphinx-preliminary: a sphinx extension to mark pages as preliminary 
-# and automatically mark referring pages as preliminary 
+# sphinx-draft: a sphinx extension to mark pages as draft 
+# and automatically mark referring pages as draft 
 #
 # Copyright (C) 2012 Diego Veralli <diegoveralli@yahoo.co.uk>
 #
-#  This file is part of sphinx-preliminary.
+#  This file is part of sphinx-draft.
 #  
-#  sphinx-preliminary is free software: you can redistribute it and/or modify
+#  sphinx-draft is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
 #
-#  sphinx-preliminary is distributed in the hope that it will be useful,
+#  sphinx-draft is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with sphinx-preliminary. If not, see <http://www.gnu.org/licenses/>.
+#  along with sphinx-draft. If not, see <http://www.gnu.org/licenses/>.
 #
 
 from docutils import nodes
@@ -29,19 +29,19 @@ from sphinx.util.nodes import set_source_info
 from sphinx.util.compat import Directive, make_admonition
 from sphinx.util.compat import nodes
 
-preliminary_docs_text = "This is preliminary documentation"
+draft_docs_text = "This is draft documentation"
 
 class refdoc_marker(nodes.General, nodes.Element): 
     def __init__(self, target_doc):
         super(refdoc_marker, self).__init__()
         self.target_doc = target_doc
         
-class preliminary_marker(nodes.General, nodes.Element): 
+class draft_marker(nodes.General, nodes.Element): 
     def __init__(self, check):
-        super(preliminary_marker, self).__init__()
+        super(draft_marker, self).__init__()
         self.check = check
 
-class PreliminaryNote(Directive):
+class DraftNote(Directive):
     has_content = False
     required_arguments = 1
 
@@ -55,32 +55,32 @@ class PreliminaryNote(Directive):
                 self.arguments[0]
             raise Exception, msg
 
-        return [preliminary_marker(check)]
+        return [draft_marker(check)]
 
-def get_preliminary_info(app, docname, doctree):
+def get_draft_info(app, docname, doctree):
     env = app.builder.env
-    if not hasattr(env, 'preliminary_doc_status'):
-        env.preliminary_doc_status = {}
+    if not hasattr(env, 'draft_doc_status'):
+        env.draft_doc_status = {}
 
-    if docname == None or not docname in env.preliminary_doc_status:
-        retval = doctree.attributes.get('preliminary_info')
+    if docname == None or not docname in env.draft_doc_status:
+        retval = doctree.attributes.get('draft_info')
         if retval == None:
             retval = {}
-            doctree.attributes['preliminary_info'] = retval
+            doctree.attributes['draft_info'] = retval
 
         if docname != None:
-            env.preliminary_doc_status[docname] = retval
-    else: retval = env.preliminary_doc_status[docname]
+            env.draft_doc_status[docname] = retval
+    else: retval = env.draft_doc_status[docname]
         
     return retval
 
 def process_preliminaries(app, doctree):
-    pre_info = get_preliminary_info(app, None, doctree)
+    pre_info = get_draft_info(app, None, doctree)
 
-    for node in doctree.traverse(preliminary_marker):
-        curr = pre_info.get('preliminary_status')
+    for node in doctree.traverse(draft_marker):
+        curr = pre_info.get('draft_status')
         if curr == None or curr == 'check': 
-            pre_info['preliminary_status'] = 'check' if node.check else 'yes'
+            pre_info['draft_status'] = 'check' if node.check else 'yes'
 
     for node in doctree.traverse(sphinx.addnodes.pending_xref):
         if 'reftarget' in node.attributes:
@@ -104,12 +104,12 @@ def find_doc(app, refdoc_name, doc_name):
     name = locate_relative_doc(refdoc_name, doc_name)
     return (name, env.get_doctree(name))
     
-def update_preliminary_status(app, doctree, docname, seen_docs):
-    pre_info = get_preliminary_info(app, docname, doctree)
-    curr = pre_info.get('preliminary_status') 
+def update_draft_status(app, doctree, docname, seen_docs):
+    pre_info = get_draft_info(app, docname, doctree)
+    curr = pre_info.get('draft_status') 
 
     if curr == None: return ('no', None)
-    if curr != 'check': return (curr, pre_info.get('preliminary_dependencies'))
+    if curr != 'check': return (curr, pre_info.get('draft_dependencies'))
 
     seen_docs.append(docname)
 
@@ -125,38 +125,38 @@ def update_preliminary_status(app, doctree, docname, seen_docs):
     refs = pre_info.get('link_references')
     if not refs: return (curr, pre_info.get('link_references'))
 
-    preliminary_dependencies = []
+    draft_dependencies = []
     for dep_name in refs:
         depname, dep = find_doc(app, docname, dep_name)
-        dep_info = get_preliminary_info(app, depname, dep)
-        dep_status = dep_info.get('preliminary_status')
+        dep_info = get_draft_info(app, depname, dep)
+        dep_status = dep_info.get('draft_status')
         if dep_status != None and dep_status == 'yes':
-            preliminary_dependencies.append(depname)
+            draft_dependencies.append(depname)
 
         if depname in seen_docs: continue
 
         if dep_status == 'check':
-            status, dependencies = update_preliminary_status(app, dep, depname, seen_docs)
-            dep_info['preliminary_status'] = status
-            dep_info['preliminary_dependencies'] = dependencies
+            status, dependencies = update_draft_status(app, dep, depname, seen_docs)
+            dep_info['draft_status'] = status
+            dep_info['draft_dependencies'] = dependencies
 
-    if len(preliminary_dependencies) > 0:
-        return ('yes', preliminary_dependencies)
-    else: return (curr, pre_info.get('preliminary_dependencies'))
+    if len(draft_dependencies) > 0:
+        return ('yes', draft_dependencies)
+    else: return (curr, pre_info.get('draft_dependencies'))
 
-def create_preliminary_warning(preliminary_dependencies=None):
-    text = preliminary_docs_text
-    if preliminary_dependencies:
-        text += " because it links to the following preliminary pages:"
+def create_draft_warning(draft_dependencies=None):
+    text = draft_docs_text
+    if draft_dependencies:
+        text += " because it links to the following draft pages:"
     t = nodes.Text(text)
     p = nodes.paragraph()
     p.append(t)
 
     warning = nodes.warning()
     warning.append(p)
-    if preliminary_dependencies:
+    if draft_dependencies:
         lst = nodes.bullet_list()
-        for dep in preliminary_dependencies:
+        for dep in draft_dependencies:
             item = nodes.list_item()
             item_p = nodes.paragraph()
             item_t = nodes.Text(dep)
@@ -167,18 +167,18 @@ def create_preliminary_warning(preliminary_dependencies=None):
         warning.append(lst)
     return warning
 
-def process_preliminary_nodes_resolved(app, doctree, docname):
-    pre_info = get_preliminary_info(app, docname, doctree)
+def process_draft_nodes_resolved(app, doctree, docname):
+    pre_info = get_draft_info(app, docname, doctree)
 
-    for node in doctree.traverse(preliminary_marker):
-        if pre_info['preliminary_status'] == 'check' and node.check:
-            status, dependencies = update_preliminary_status(app, doctree, docname, [docname])
-            pre_info['preliminary_status'] = status
-            pre_info['preliminary_dependencies'] = dependencies
+    for node in doctree.traverse(draft_marker):
+        if pre_info['draft_status'] == 'check' and node.check:
+            status, dependencies = update_draft_status(app, doctree, docname, [docname])
+            pre_info['draft_status'] = status
+            pre_info['draft_dependencies'] = dependencies
 
         replacements = []
-        if pre_info['preliminary_status'] == 'yes':
-            warning = create_preliminary_warning(pre_info.get('preliminary_dependencies'))
+        if pre_info['draft_status'] == 'yes':
+            warning = create_draft_warning(pre_info.get('draft_dependencies'))
             replacements.append(warning)
 
         node.replace_self(replacements)
@@ -187,7 +187,7 @@ def process_preliminary_nodes_resolved(app, doctree, docname):
         node.replace_self([])
 
 def setup(app):
-    app.add_directive('preliminary', PreliminaryNote)
+    app.add_directive('draft', DraftNote)
     app.connect('doctree-read', process_ref_nodes)
-    app.connect('doctree-resolved', process_preliminary_nodes_resolved)
+    app.connect('doctree-resolved', process_draft_nodes_resolved)
 
