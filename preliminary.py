@@ -87,45 +87,63 @@ def update_preliminary_status(app, doctree, docname, seen_docs):
     pre_info = get_preliminary_info(app, docname, doctree)
     curr = pre_info.get('preliminary_status') 
 
-    if curr == None: return 'no'
-    if curr != 'check': return curr
+    if curr == None: return ('no', None)
+    if curr != 'check': return (curr, pre_info.get('preliminary_dependencies'))
 
     seen_docs.append(docname)
 
-    refs = pre_info.get('preliminary_references')
+    refs = pre_info.get('link_references')
     if refs == None:
         refs = []
-        pre_info['preliminary_references'] = refs
+        pre_info['link_references'] = refs
 
     for node in doctree.traverse(refdoc_marker):
         if node.target_doc not in refs:
             refs.append(node.target_doc)
 
-    refs = pre_info.get('preliminary_references')
-    if not refs: return curr
+    refs = pre_info.get('link_references')
+    if not refs: return (curr, pre_info.get('link_references'))
+
+    preliminary_dependencies = []
     for dep_name in refs:
         depname, dep = find_doc(app, docname, dep_name)
         dep_info = get_preliminary_info(app, depname, dep)
         dep_status = dep_info.get('preliminary_status')
         if dep_status != None and dep_status == 'yes':
-            return 'yes'
+            preliminary_dependencies.append(depname)
 
         if depname in seen_docs: continue
 
         if dep_status == 'check':
-            dep_info['preliminary_status'] = \
-                update_preliminary_status(app, dep, depname, seen_docs)
+            status, dependencies = update_preliminary_status(app, dep, depname, seen_docs)
+            dep_info['preliminary_status'] = status
+            dep_info['preliminary_dependencies'] = dependencies
 
-        if dep_status == 'yes': return 'yes'
+    if len(preliminary_dependencies) > 0:
+        return ('yes', preliminary_dependencies)
+    else: return (curr, pre_info.get('preliminary_dependencies'))
 
-    return curr
-
-def create_preliminary_warning():
-    t = nodes.Text(preliminary_docs_text)
+def create_preliminary_warning(preliminary_dependencies=None):
+    text = preliminary_docs_text
+    if preliminary_dependencies:
+        text += " because it links to the following preliminary pages:"
+    t = nodes.Text(text)
     p = nodes.paragraph()
     p.append(t)
+
     warning = nodes.warning()
     warning.append(p)
+    if preliminary_dependencies:
+        lst = nodes.bullet_list()
+        for dep in preliminary_dependencies:
+            item = nodes.list_item()
+            item_p = nodes.paragraph()
+            item_t = nodes.Text(dep)
+            item_p.append(item_t)
+            item.append(item_p)
+            lst.append(item)
+
+        warning.append(lst)
     return warning
 
 def process_preliminary_nodes_resolved(app, doctree, docname):
@@ -133,12 +151,13 @@ def process_preliminary_nodes_resolved(app, doctree, docname):
 
     for node in doctree.traverse(preliminary_marker):
         if pre_info['preliminary_status'] == 'check' and node.check:
-            pre_info['preliminary_status'] = \
-                update_preliminary_status(app, doctree, docname, [docname])
+            status, dependencies = update_preliminary_status(app, doctree, docname, [docname])
+            pre_info['preliminary_status'] = status
+            pre_info['preliminary_dependencies'] = dependencies
 
         replacements = []
         if pre_info['preliminary_status'] == 'yes':
-            warning = create_preliminary_warning()
+            warning = create_preliminary_warning(pre_info.get('preliminary_dependencies'))
             replacements.append(warning)
 
         node.replace_self(replacements)
