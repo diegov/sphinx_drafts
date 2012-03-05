@@ -26,7 +26,7 @@ import sphinx
 from docutils import nodes
 from sphinx.util.compat import Directive
 
-draft_docs_text = "This is draft documentation"
+DRAFT_DOCS_TEXT = "This is draft documentation"
 
 
 class refdoc_marker(nodes.General, nodes.Element):
@@ -200,7 +200,7 @@ def update_status(app, doctree, docname, seen_docs):
 
 
 def create_draft_warning(draft_dependencies=None):
-    text = draft_docs_text
+    text = DRAFT_DOCS_TEXT
     if draft_dependencies:
         text += " because it links to the following draft pages:"
     t = nodes.Text(text)
