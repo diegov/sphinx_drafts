@@ -44,7 +44,7 @@ class draft_marker(nodes.General, nodes.Element):
 class DraftNote(Directive):
     """Usage: .. draft:: 'yes' or .. draft:: 'check'
     """
-    has_content = False
+    has_content = True
     required_arguments = 1
 
     def run(self):
@@ -57,7 +57,10 @@ class DraftNote(Directive):
                 self.arguments[0]
             raise Exception(msg)
 
-        return [draft_marker(check)]
+        marker = draft_marker(check)
+        self.state.nested_parse(self.content, self.content_offset,
+                                marker, match_titles=1)
+        return [marker]
 
 
 class DraftInfo(object):
@@ -236,6 +239,9 @@ def process_draft_nodes_resolved(app, doctree, docname):
         replacements = []
         if draft_info.status == 'yes':
             warning = create_draft_warning(draft_info.draft_dependencies)
+            if node.children:
+                for child in node.children:
+                    warning.append(child)
             replacements.append(warning)
 
         node.replace_self(replacements)
